@@ -10,6 +10,7 @@ class ParticleFlowNetwork(nn.Module):
 			mapping_hidden_layer_dimensions: list[int],
 			input_size: int = 4,
 			total_feature_size: int = 8,
+			output_dim: int = 1
 	) -> None:
 		"""
 		Particle Flow Network model, based off of the Deep Sets framework. Takes per-particle information and attempts
@@ -46,7 +47,7 @@ class ParticleFlowNetwork(nn.Module):
 				classifier_hidden_layer_dimensions[i + 1]))
 			stack.append(nn.ReLU())
 		
-		stack.append(nn.Linear(classifier_hidden_layer_dimensions[-1], 1))
+		stack.append(nn.Linear(classifier_hidden_layer_dimensions[-1], output_dim))
 		
 		self.stack = stack
 		self.p_map = ParticleMapping(input_size, total_feature_size, latent_space_dim, mapping_hidden_layer_dimensions)

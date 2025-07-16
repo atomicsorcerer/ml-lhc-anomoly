@@ -23,3 +23,14 @@ plt.xlabel("Mass")
 plt.ylabel("Entries")
 plt.legend()
 plt.show()
+
+plt.hist(
+    [signal],
+    bins=500,
+    color="tab:red",
+    label="Signal",
+)
+plt.xlabel("Mass")
+plt.ylabel("Entries")
+plt.legend()
+plt.show()
