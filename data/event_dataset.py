@@ -114,50 +114,51 @@ class ParameterizedBackgroundDataset(Dataset):
         return self.params_dataset[idx], self.mass_dataset[idx]
 
 
-data_0 = ParameterizedBackgroundDataset(
-    0,
-    1000,
-    100,
-    [(1000.0, 0.0, -0.04, 0.0)],
-)
-data_1 = ParameterizedBackgroundDataset(
-    0,
-    1000,
-    100,
-    [(1000.0, 0.0, -0.08, 0.0)],
-)
-data_2 = ParameterizedBackgroundDataset(
-    0,
-    1000,
-    100,
-    [(1000.0, 0.0, -0.12, 0.0)],
-)
-figure, axis = plt.subplots(1, 3, sharex=True, sharey=True)
-axis[0].hist(
-    [data_0.mass_dataset.flatten()],
-    bins=100,
-    histtype="bar",
-    color="tab:red",
-    label="$theta_2$=-0.04",
-    range=(0, 1000),
-)
-axis[1].hist(
-    [data_1.mass_dataset.flatten()],
-    bins=100,
-    histtype="bar",
-    color="tab:blue",
-    label="$theta_2$=-0.08",
-    range=(0, 1000),
-)
-axis[2].hist(
-    [data_2.mass_dataset.flatten()],
-    bins=100,
-    histtype="bar",
-    color="black",
-    label="$theta_2$=-0.12",
-    range=(0, 1000),
-)
-figure.supxlabel("Mass")
-figure.supylabel("Entries")
-figure.legend()
-plt.show()
+if __name__ == "__main__":
+    data_1 = ParameterizedBackgroundDataset(
+        0,
+        1000,
+        100,
+        [(1000.0, 0.0, -0.08, 0.0)],
+    )
+    data_0 = ParameterizedBackgroundDataset(
+        0,
+        1000,
+        100,
+        [(1000.0, 0.0, -0.04, 0.0)],
+    )
+    data_2 = ParameterizedBackgroundDataset(
+        0,
+        1000,
+        100,
+        [(1000.0, 0.0, -0.12, 0.0)],
+    )
+    figure, axis = plt.subplots(1, 3, sharex=True, sharey=True)
+    axis[0].hist(
+        [data_0.mass_dataset.flatten()],
+        bins=100,
+        histtype="bar",
+        color="tab:red",
+        label="$theta_2$=-0.04",
+        range=(0, 1000),
+    )
+    axis[1].hist(
+        [data_1.mass_dataset.flatten()],
+        bins=100,
+        histtype="bar",
+        color="tab:blue",
+        label="$theta_2$=-0.08",
+        range=(0, 1000),
+    )
+    axis[2].hist(
+        [data_2.mass_dataset.flatten()],
+        bins=100,
+        histtype="bar",
+        color="black",
+        label="$theta_2$=-0.12",
+        range=(0, 1000),
+    )
+    figure.supxlabel("Mass")
+    figure.supylabel("Entries")
+    figure.legend()
+    plt.show()

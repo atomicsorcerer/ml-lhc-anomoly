@@ -7,10 +7,13 @@ class EventGenerator(torch.nn.Module):
         self.noise_dim = noise_dim
         self.network = torch.nn.Sequential(
             torch.nn.Linear(noise_dim, 128),
+            # torch.nn.BatchNorm1d(128),
             torch.nn.ReLU(),
             torch.nn.Linear(128, 128),
+            # torch.nn.BatchNorm1d(128),
             torch.nn.ReLU(),
             torch.nn.Linear(128, output_dim),
+            # torch.nn.BatchNorm1d(output_dim),
             torch.nn.ReLU(),
         )
 
@@ -27,11 +30,10 @@ class ConstrainedGenerator(torch.nn.Module):
             torch.nn.BatchNorm1d(128),
             torch.nn.ReLU(),
             torch.nn.Linear(128, 128),
-            torch.nn.ReLU(),
             torch.nn.BatchNorm1d(128),
+            torch.nn.ReLU(),
             torch.nn.Linear(128, output_dim),
             torch.nn.ReLU(),
-            torch.nn.BatchNorm1d(output_dim),
         )
 
     def forward(self, x) -> torch.Tensor:

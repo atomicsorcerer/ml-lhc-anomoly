@@ -7,10 +7,13 @@ class GeneralDiscriminator(torch.nn.Module):
         self.input_dim = input_dim
         self.network = torch.nn.Sequential(
             torch.nn.Linear(input_dim, 128),
+            torch.nn.BatchNorm1d(128),
             torch.nn.ReLU(),
             torch.nn.Linear(128, 128),
+            torch.nn.BatchNorm1d(128),
             torch.nn.ReLU(),
             torch.nn.Linear(128, 1),
+            torch.nn.BatchNorm1d(1),
         )
 
     def forward(self, x) -> torch.Tensor:
@@ -30,7 +33,6 @@ class ConstrainedDiscriminator(torch.nn.Module):
             torch.nn.BatchNorm1d(128),
             torch.nn.ReLU(),
             torch.nn.Linear(128, 1),
-            torch.nn.BatchNorm1d(1),
         )
 
     def forward(self, x) -> torch.Tensor:

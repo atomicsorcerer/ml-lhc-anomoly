@@ -13,11 +13,12 @@ from settings import TEST_PROPORTION, RANDOM_SEED
 
 # Set training parameters
 BATCH_SIZE = 128
-DISCRIMINATOR_LEARNING_RATE = 0.01
-GENERATOR_LEARNING_RATE = 0.01
-WEIGHT_DECAY = 0.01
-EPOCHS = 10
-NOISE_DIM = 16
+DISCRIMINATOR_LEARNING_RATE = 0.005
+GENERATOR_LEARNING_RATE = 0.001
+WEIGHT_DECAY = 0.0001
+EPOCHS = 5
+NOISE_DIM = 32
+GAMMA_R1 = 10000.0
 
 # Import dataset; split and prepare data
 data = EventDataset(
@@ -33,7 +34,6 @@ test_dataloader = DataLoader(test_data, BATCH_SIZE)
 
 # Load the models
 generator = EventGenerator(noise_dim=NOISE_DIM, output_dim=1)
-# Add constrained generator/discriminator here
 discriminator = GeneralDiscriminator(input_dim=1)
 
 # Set up training optimizer and loss function
@@ -56,15 +56,27 @@ for epoch in range(EPOCHS):
     for batch, (real_data, sb_truth) in enumerate(
         train_dataloader
     ):  # sb_truth = actual s/b label (1/0 respectively)
-        # Train the discriminator
+        # Train the discriminator (1) - Real data
         discriminator_optimizer.zero_grad()
+        real_data = real_data.requires_grad_()  # Necessary for R1 regularization
         real_data_labels = torch.ones((len(real_data), 1))
         real_data_discriminator_outputs = discriminator(real_data)
         real_data_discriminator_loss = loss_function(
             real_data_discriminator_outputs, real_data_labels
         )
+
+        # R1 Regularization
+        real_gradient = torch.autograd.grad(
+            outputs=real_data_discriminator_outputs.sum(),
+            inputs=real_data,
+            create_graph=True,
+            retain_graph=True,
+        )[0]
+        r1_penalty = real_gradient.pow(2).flatten(start_dim=1).sum(1).mean()
+        real_data_discriminator_loss += 0.5 * GAMMA_R1 * r1_penalty
         real_data_discriminator_loss.backward()
 
+        # Train the discriminator (2) - Fake data
         noise = torch.randn((len(real_data), NOISE_DIM))
         fake_data = generator(noise)
         fake_data_labels = torch.zeros((len(real_data), 1))
@@ -87,15 +99,15 @@ for epoch in range(EPOCHS):
 
         # Display training metrics
         if batch % 100 == 0:
-            print(
-                f"Discriminator loss: {real_data_discriminator_loss + fake_data_discriminator_loss}"
-            )
-            print(f"Generator loss: {generator_loss}")
+            if batch % 100 == 0:
+                print(
+                    f"{batch} - Discrim loss: {real_data_discriminator_loss + fake_data_discriminator_loss}, Generator loss: {generator_loss}"
+                )
 
 # Test the models
 with torch.no_grad():
     test_samples = 100_000
-    bins = 10
+    bins = 50
     limit = [0, 3000]
 
     noise = torch.randn(test_samples, NOISE_DIM)
@@ -125,6 +137,6 @@ with torch.no_grad():
 
     discrim_output = discriminator(torch.linspace(0, 3000, 1000).reshape((-1, 1)))
     plt.plot(np.linspace(0, 3000, 1000), discrim_output.detach().numpy())
-    figure.supxlabel("Mass")
-    figure.supylabel("Discriminator output")
+    plt.xlabel("Mass")
+    plt.ylabel("Discriminator output")
     plt.show()

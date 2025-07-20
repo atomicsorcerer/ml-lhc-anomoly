@@ -14,10 +14,11 @@ from settings import TEST_PROPORTION, RANDOM_SEED
 # Set training parameters
 BATCH_SIZE = 128
 DISCRIMINATOR_LEARNING_RATE = 0.005
-GENERATOR_LEARNING_RATE = 0.005
+GENERATOR_LEARNING_RATE = 0.01
 WEIGHT_DECAY = 0.001
 EPOCHS = 5
 NOISE_DIM = 64
+GAMMA_R1 = 10000.0
 
 # Import dataset; split and prepare data
 data = ParameterizedBackgroundDataset(
@@ -29,6 +30,8 @@ data = ParameterizedBackgroundDataset(
         (1000.0, 0.0, -0.04, 0.0),
         (1000.0, 0.0, -0.08, 0.0),
         (1000.0, 0.0, -0.16, 0.0),
+        (1000.0, 0.0, -1.0, 0.0),
+        (10000.0, 0.0, -0.32, 0.0),
     ],
 )
 train_dataloader = DataLoader(data, BATCH_SIZE, shuffle=True)
@@ -55,7 +58,8 @@ metric = BinaryAUROC()
 for epoch in range(EPOCHS):
     print(f"Epoch {epoch + 1}\n-------------------------------")
     for batch, (params, real_masses) in enumerate(train_dataloader):
-        # Train the discriminator
+        # Train the discriminator (1) - Real data
+        real_masses = real_masses.requires_grad_()  # Necessary for R1 regularization
         concat_real_data = torch.concat([params, real_masses], dim=1)
         discriminator_optimizer.zero_grad()
         real_data_labels = torch.ones((len(real_masses), 1))
@@ -63,8 +67,18 @@ for epoch in range(EPOCHS):
         real_data_discriminator_loss = loss_function(
             real_data_discriminator_outputs, real_data_labels
         )
+
+        # R1 Regularization
+        real_gradient = torch.autograd.grad(
+            outputs=real_data_discriminator_outputs.sum(),
+            inputs=real_masses,
+            create_graph=True,
+        )[0]
+        r1_penalty = real_gradient.pow(2).flatten(start_dim=1).sum(1).mean()
+        real_data_discriminator_loss += 0.5 * GAMMA_R1 * r1_penalty
         real_data_discriminator_loss.backward()
 
+        # Train the discriminator (2) - Fake data
         noise = torch.randn((len(real_masses), NOISE_DIM))
         concat_fake_input = torch.concat([params, noise], dim=1)
         fake_data = generator(concat_fake_input)
@@ -96,8 +110,8 @@ for epoch in range(EPOCHS):
 # Test the models
 with torch.no_grad():
     test_samples = 100_000
-    bins = 25
-    limit = [0, 250]
+    bins = 100
+    limit = [0, 1000]
 
     params = torch.Tensor([1000.0, 0.0, -0.2, 0.0] * test_samples).reshape(-1, 4)
     params_2 = torch.Tensor([1000.0, 0.0, -0.04, 0.0] * test_samples).reshape(-1, 4)
