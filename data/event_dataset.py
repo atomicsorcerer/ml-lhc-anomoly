@@ -13,6 +13,7 @@ class EventDataset(Dataset):
         signal_file_path: str,
         limit: int = 10_000,
         signal_proportion: float = 0.5,
+        normalize: bool = False,
     ) -> None:
         # Import the CSV files and add a column for background/signal (denoted as 0 or 1, respectively)
         bg_dataset = pl.read_csv(bg_file_path).with_columns(pl.lit(0.0).alias("label"))
@@ -45,8 +46,15 @@ class EventDataset(Dataset):
 
         # Convert dataset type to torch.Tensor and reshape it
         features = features.to_torch().type(torch.float32)
-        # self.features = features.reshape((-1, 2, 4))
-        self.features = features.reshape((-1, 1))
+        features = features.reshape((-1, 1))
+        if normalize:
+            features = features / features.abs().max()
+        features.requires_grad_()
+        self.features = features
+
+        self.mass = (
+            dataset.select(["mass"]).to_torch().type(torch.float32).reshape((-1, 1))
+        )
         self.labels = labels.to_torch().type(torch.float32)
         self.dataframe = dataset
 

@@ -22,7 +22,7 @@ GAMMA_R1 = 10000.0
 
 # Import dataset; split and prepare data
 data = EventDataset(
-    "data/background.csv", "data/signal.csv", 100_000, signal_proportion=0.01
+    "../data/background.csv", "data/signal.csv", 100_000, signal_proportion=0.01
 )
 train_data, test_data = random_split(
     data,

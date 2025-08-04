@@ -1,30 +1,35 @@
-import torch
-from torch.utils.data import DataLoader, random_split
-from torcheval.metrics import BinaryAUROC
+import time
 
-from nflows.flows.base import Flow
-from nflows.distributions.normal import StandardNormal
-from nflows.transforms.base import CompositeTransform
+from torch.utils.data import DataLoader, random_split
+
 from nflows.transforms.autoregressive import *
-from nflows.transforms.permutations import ReversePermutation
 
 import matplotlib.pyplot as plt
-import numpy as np
 
 from data import EventDataset
-from models.discriminators import GeneralDiscriminator
-from models.generators import EventGenerator
+from utils.loss import calculate_non_smoothness_penalty
+from models.flows import create_spline_flow
 from settings import TEST_PROPORTION, RANDOM_SEED
 
 
 # Set training parameters
 BATCH_SIZE = 128
-LEARNING_RATE = 0.0001
+LEARNING_RATE = 0.005
+WEIGHT_DECAY = 0.001
 EPOCHS = 5
+DATASET_SIZE = 100_000
+
+MASS_DISTRO_LOSS_FACTOR = 1.0
+NEGATIVE_MASS_PENALTY_FACTOR = 1.0
+SMOOTHNESS_PENALTY_FACTOR = 0.5
 
 # Prepare dataset
 data = EventDataset(
-    "data/background.csv", "data/signal.csv", 100_000, signal_proportion=0.01
+    "data/background.csv",
+    "data/signal.csv",
+    DATASET_SIZE,
+    signal_proportion=0.1,
+    normalize=True,
 )
 train_data, test_data = random_split(
     data,
@@ -35,36 +40,15 @@ train_dataloader = DataLoader(train_data, BATCH_SIZE)
 test_dataloader = DataLoader(test_data, BATCH_SIZE)
 
 # Load and prepare model
-transforms = [
-    MaskedAffineAutoregressiveTransform(
-        features=1, hidden_features=64, use_batch_norm=True
-    ),
-    # ReversePermutation(features=1),
-    MaskedAffineAutoregressiveTransform(
-        features=1, hidden_features=64, use_batch_norm=True
-    ),
-    # ReversePermutation(features=1),
-    MaskedAffineAutoregressiveTransform(
-        features=1, hidden_features=64, use_batch_norm=True
-    ),
-    # ReversePermutation(features=1),
-    MaskedAffineAutoregressiveTransform(
-        features=1, hidden_features=64, use_batch_norm=True
-    ),
-    # ReversePermutation(features=1),
-    MaskedAffineAutoregressiveTransform(
-        features=1, hidden_features=64, use_batch_norm=True
-    ),
-    # ReversePermutation(features=1),
-]
-composite_transform = CompositeTransform(transforms)
-
-base_dist = StandardNormal(shape=[1])
-
-flow = Flow(composite_transform, base_dist)
+flow = create_spline_flow(10, 1, 32, 64, 4.0)
 
 # Set up training optimizer
-optimizer = torch.optim.Adam(flow.parameters(), lr=LEARNING_RATE)
+optimizer = torch.optim.AdamW(
+    flow.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY
+)
+
+# Establish performance metrics
+loss_per_epoch = []
 
 # Train the flow
 for epoch in range(EPOCHS):
@@ -74,23 +58,50 @@ for epoch in range(EPOCHS):
     ):  # sb_truth = actual s/b label (1/0 respectively)
         optimizer.zero_grad()
 
-        negative_log_likelihood = -flow.log_prob(X)
+        # Calculate log_likelihood for distribution
+        loss = -flow.log_prob(X).mean()
 
-        loss = negative_log_likelihood.mean()
+        # Calculate un-smoothness penalty
+        if SMOOTHNESS_PENALTY_FACTOR > 0.0:
+            smoothness_penalty = calculate_non_smoothness_penalty(
+                flow, 100, SMOOTHNESS_PENALTY_FACTOR
+            )
+            loss += smoothness_penalty
+
         loss.backward()
         optimizer.step()
 
         # Display training metrics
         if batch % 100 == 0:
-            print(f"{batch} - Loss: {loss}")
+            print(f"{batch} - loss: {loss}")
 
-# Test the flow
+    with torch.no_grad():
+        test_loss = 0
+        for X, y in test_dataloader:
+            loss = -flow.log_prob(X).mean()
+            test_loss += loss / len(test_dataloader)
+
+        loss_per_epoch.append(test_loss)
+        print(f"Testing loss: {test_loss}")
+
+# Plot the loss over time
+plt.plot(loss_per_epoch, color="tab:blue")
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.show()
+
+# Save model
+model_save_name = input("Saved model file name [time/date]: ")
+if model_save_name.strip() == "":
+    model_save_name = round(time.time())
+torch.save(flow.state_dict(), f"saved_models/{model_save_name}.pth")
+
+# Test the flow's generation
 with torch.no_grad():
-    test_samples = 100_000
     bins = 50
-    # limit = [0, 3000]
+    limit = [0, 1]
 
-    fake_events = flow.sample(test_samples).numpy()
+    fake_events = flow.sample(DATASET_SIZE)
 
     figure, axis = plt.subplots(1, 2, sharex=True, sharey=True)
     axis[0].hist(
@@ -99,7 +110,7 @@ with torch.no_grad():
         histtype="bar",
         color="black",
         label="Original",
-        # range=limit,
+        range=limit,
     )
     axis[1].hist(
         [fake_events.flatten()],
@@ -107,9 +118,16 @@ with torch.no_grad():
         histtype="bar",
         color="tab:red",
         label="Generated",
-        # range=limit,
+        range=limit,
     )
     figure.supxlabel("Mass")
     figure.supylabel("Entries")
     figure.legend()
+    plt.show()
+
+    X = torch.linspace(0.0, 1.0, 100).reshape((-1, 1))
+    Y = flow.log_prob(X).exp()
+    plt.plot(X.numpy().flatten(), Y.numpy().flatten())
+    plt.xlabel("Normalized mass")
+    plt.ylabel("Predicted density")
     plt.show()
