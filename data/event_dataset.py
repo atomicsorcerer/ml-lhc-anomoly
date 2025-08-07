@@ -35,6 +35,7 @@ class EventDataset(Dataset):
             shuffle=True,
             seed=RANDOM_SEED,
         )
+
         dataset = pl.concat((bg_dataset, signal_dataset))
 
         # Select the necessary columns for training, split dataset into features and labels

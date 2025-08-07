@@ -7,21 +7,19 @@ from nflows.transforms.autoregressive import *
 import matplotlib.pyplot as plt
 
 from data import EventDataset
-from utils.loss import calculate_non_smoothness_penalty
+from utils.loss import calculate_non_smoothness_penalty_1d
 from models.flows import create_spline_flow
 from settings import TEST_PROPORTION, RANDOM_SEED
 
 
 # Set training parameters
 BATCH_SIZE = 128
-LEARNING_RATE = 0.005
-WEIGHT_DECAY = 0.001
-EPOCHS = 5
+LEARNING_RATE = 0.001
+WEIGHT_DECAY = 0.01
+EPOCHS = 10
 DATASET_SIZE = 100_000
 
-MASS_DISTRO_LOSS_FACTOR = 1.0
-NEGATIVE_MASS_PENALTY_FACTOR = 1.0
-SMOOTHNESS_PENALTY_FACTOR = 0.5
+SMOOTHNESS_PENALTY_FACTOR = 0.02
 
 # Prepare dataset
 data = EventDataset(
@@ -63,7 +61,7 @@ for epoch in range(EPOCHS):
 
         # Calculate un-smoothness penalty
         if SMOOTHNESS_PENALTY_FACTOR > 0.0:
-            smoothness_penalty = calculate_non_smoothness_penalty(
+            smoothness_penalty = calculate_non_smoothness_penalty_1d(
                 flow, 100, SMOOTHNESS_PENALTY_FACTOR
             )
             loss += smoothness_penalty

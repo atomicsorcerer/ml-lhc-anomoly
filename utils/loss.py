@@ -4,17 +4,37 @@ from nflows.flows import Flow
 from utils.physics import calculate_squared_dijet_mass
 
 
-def calculate_non_smoothness_penalty(
+def calculate_non_smoothness_penalty_1d(
     flow: Flow, n_knots: int, alpha: float
 ) -> torch.Tensor:
     knots = torch.linspace(0.0, 1.0, n_knots).reshape((-1, 1))
     densities = flow.log_prob(knots).exp()
-    slopes = densities[1:] - densities[:-1]
+    slopes = (densities[1:] - densities[:-1]) * (n_knots - 1)
     slopes = slopes.abs()
     slope_differences = slopes[1:] - slopes[:-1]
     slope_differences = slope_differences.abs()
-    normalized_slope_differences = slope_differences / slope_differences.max()
-    smoothness_penalty = normalized_slope_differences.mean()
+    smoothness_penalty = slope_differences.mean()
+    smoothness_penalty = smoothness_penalty * alpha
+
+    return smoothness_penalty
+
+
+def calculate_non_smoothness_penalty_multi_dim(
+    flow: Flow, n_knots: int, n_dims: int, alpha: float
+) -> torch.Tensor:
+    knots_1d = torch.linspace(-1.0, 1.0, n_knots).reshape((-1, 1))
+    knots = torch.zeros(n_dims, n_dims, n_knots)
+    for i in range(n_dims):
+        knots[i][i] += knots_1d
+
+    densities = flow.log_prob(knots).exp()
+    print(densities)
+    return
+    slopes = (densities[1:] - densities[:-1]) * (n_knots - 1)
+    slopes = slopes.abs()
+    slope_differences = slopes[1:] - slopes[:-1]
+    slope_differences = slope_differences.abs()
+    smoothness_penalty = slope_differences.mean()
     smoothness_penalty = smoothness_penalty * alpha
 
     return smoothness_penalty

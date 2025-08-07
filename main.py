@@ -6,8 +6,8 @@ import numpy as np
 plt.rcParams.update({"font.size": 12})
 plt.rcParams.update({"lines.linewidth": 1.5})
 # plt.rcParams.update({"text.usetex": True})
-plt.rcParams.update({"font.family": "serif"})
-plt.rcParams.update({"font.serif": "Computer Modern Serif"})
+# plt.rcParams.update({"font.family": "serif"})
+# plt.rcParams.update({"font.serif": "Computer Modern Serif"})
 
 signal = pl.read_csv("data/signal.csv").get_column("mass").to_numpy()
 background = pl.read_csv("data/background.csv").get_column("mass").to_numpy()
