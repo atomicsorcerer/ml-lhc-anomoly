@@ -11,6 +11,7 @@ class EventDataset(Dataset):
         self,
         bg_file_path: str,
         signal_file_path: str,
+        included_features: list[str],
         limit: int = 10_000,
         signal_proportion: float = 0.5,
         normalize: bool = False,
@@ -39,17 +40,22 @@ class EventDataset(Dataset):
         dataset = pl.concat((bg_dataset, signal_dataset))
 
         # Select the necessary columns for training, split dataset into features and labels
-        features = dataset.select(
-            # ["energy_1", "px_1", "py_1", "pz_1", "energy_2", "px_2", "py_2", "pz_2"]
-            ["mass"]
-        )
+        features = dataset.select(included_features)
         labels = dataset.select(["label"])
 
         # Convert dataset type to torch.Tensor and reshape it
         features = features.to_torch().type(torch.float32)
-        features = features.reshape((-1, 1))
+        features = features.reshape((-1, len(included_features)))
+
         if normalize:
-            features = features / features.abs().max()
+            self.normalizing_factor = features.abs().max()
+            features = features / self.normalizing_factor
+            # features = (features - features.min()) / (features.max() - features.min())
+            # features = features[(features != 0) & (features != 1)]
+            # features = torch.log(features / (1 - features))
+            # features = features - features.mean()
+            # features = features / features.std()
+
         features.requires_grad_()
         self.features = features
 
@@ -124,50 +130,15 @@ class ParameterizedBackgroundDataset(Dataset):
 
 
 if __name__ == "__main__":
-    data_1 = ParameterizedBackgroundDataset(
-        0,
-        1000,
-        100,
-        [(1000.0, 0.0, -0.08, 0.0)],
+    data = EventDataset(
+        "background.csv",
+        "signal.csv",
+        ["mass"],
+        100_000,
+        signal_proportion=0.001,
+        normalize=True,
     )
-    data_0 = ParameterizedBackgroundDataset(
-        0,
-        1000,
-        100,
-        [(1000.0, 0.0, -0.04, 0.0)],
-    )
-    data_2 = ParameterizedBackgroundDataset(
-        0,
-        1000,
-        100,
-        [(1000.0, 0.0, -0.12, 0.0)],
-    )
-    figure, axis = plt.subplots(1, 3, sharex=True, sharey=True)
-    axis[0].hist(
-        [data_0.mass_dataset.flatten()],
-        bins=100,
-        histtype="bar",
-        color="tab:red",
-        label="$theta_2$=-0.04",
-        range=(0, 1000),
-    )
-    axis[1].hist(
-        [data_1.mass_dataset.flatten()],
-        bins=100,
-        histtype="bar",
-        color="tab:blue",
-        label="$theta_2$=-0.08",
-        range=(0, 1000),
-    )
-    axis[2].hist(
-        [data_2.mass_dataset.flatten()],
-        bins=100,
-        histtype="bar",
-        color="black",
-        label="$theta_2$=-0.12",
-        range=(0, 1000),
-    )
-    figure.supxlabel("Mass")
-    figure.supylabel("Entries")
-    figure.legend()
+    plt.hist(data.features.detach().numpy(), bins=50)
+    plt.xlabel("Mass")
+    plt.ylabel("Entries")
     plt.show()

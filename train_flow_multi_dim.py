@@ -7,24 +7,25 @@ from nflows.transforms.autoregressive import *
 import matplotlib.pyplot as plt
 
 from data import EventDataset
-from utils.loss import calculate_non_smoothness_penalty_1d
+from utils.loss import calculate_marginal_non_smoothness_penalty_multi_dim
 from models.flows import create_spline_flow
 from settings import TEST_PROPORTION, RANDOM_SEED
-
+from utils.physics import calculate_dijet_mass
 
 # Set training parameters
 BATCH_SIZE = 128
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.0005
 WEIGHT_DECAY = 0.01
 EPOCHS = 10
 DATASET_SIZE = 100_000
 
-SMOOTHNESS_PENALTY_FACTOR = 0.02
+SMOOTHNESS_PENALTY_FACTOR = 100.0
 
 # Prepare dataset
 data = EventDataset(
     "data/background.csv",
     "data/signal.csv",
+    ["energy_1", "px_1", "py_1", "pz_1", "energy_2", "px_2", "py_2", "pz_2"],
     DATASET_SIZE,
     signal_proportion=0.1,
     normalize=True,
@@ -38,7 +39,7 @@ train_dataloader = DataLoader(train_data, BATCH_SIZE)
 test_dataloader = DataLoader(test_data, BATCH_SIZE)
 
 # Load and prepare model
-flow = create_spline_flow(10, 1, 32, 64, 4.0)
+flow = create_spline_flow(10, 8, 32, 64, 4.0)
 
 # Set up training optimizer
 optimizer = torch.optim.AdamW(
@@ -61,8 +62,8 @@ for epoch in range(EPOCHS):
 
         # Calculate un-smoothness penalty
         if SMOOTHNESS_PENALTY_FACTOR > 0.0:
-            smoothness_penalty = calculate_non_smoothness_penalty_1d(
-                flow, 100, SMOOTHNESS_PENALTY_FACTOR
+            smoothness_penalty = calculate_marginal_non_smoothness_penalty_multi_dim(
+                flow, 100, 8, SMOOTHNESS_PENALTY_FACTOR
             )
             loss += smoothness_penalty
 
@@ -89,17 +90,17 @@ plt.ylabel("Loss")
 plt.show()
 
 # Save model
-model_save_name = input("Saved model file name [time/date]: ")
+model_save_name = input("\nSaved model file name [time/date]: ")
 if model_save_name.strip() == "":
     model_save_name = round(time.time())
-torch.save(flow.state_dict(), f"saved_models/{model_save_name}.pth")
+torch.save(flow.state_dict(), f"saved_models_multi_dim/{model_save_name}.pth")
 
 # Test the flow's generation
 with torch.no_grad():
     bins = 50
     limit = [0, 1]
 
-    fake_events = flow.sample(DATASET_SIZE)
+    fake_events = calculate_dijet_mass(flow.sample(DATASET_SIZE))
 
     figure, axis = plt.subplots(1, 2, sharex=True, sharey=True)
     axis[0].hist(
@@ -121,11 +122,4 @@ with torch.no_grad():
     figure.supxlabel("Mass")
     figure.supylabel("Entries")
     figure.legend()
-    plt.show()
-
-    X = torch.linspace(0.0, 1.0, 100).reshape((-1, 1))
-    Y = flow.log_prob(X).exp()
-    plt.plot(X.numpy().flatten(), Y.numpy().flatten())
-    plt.xlabel("Normalized mass")
-    plt.ylabel("Predicted density")
     plt.show()

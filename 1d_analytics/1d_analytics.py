@@ -9,11 +9,11 @@ from models.flows import create_spline_flow
 X = torch.linspace(0.0, 1.0, 100).reshape((-1, 1))
 
 unconstrained_flow = create_spline_flow(10, 1, 32, 64, 4.0)
-unconstrained_flow.load_state_dict(torch.load("saved_models/unconstrained_1.pth"))
+unconstrained_flow.load_state_dict(torch.load("../saved_models_1d/unconstrained_1.pth"))
 unconstrained_Y = unconstrained_flow.log_prob(X).exp().detach().numpy().flatten()
 
 constrained_flow = create_spline_flow(10, 1, 32, 64, 4.0)
-constrained_flow.load_state_dict(torch.load("saved_models/constrained_0.pth"))
+constrained_flow.load_state_dict(torch.load("../saved_models_1d/constrained_0.pth"))
 constrained_Y = constrained_flow.log_prob(X).exp().detach().numpy().flatten()
 
 density_difference = constrained_Y - unconstrained_Y
@@ -33,8 +33,9 @@ plt.show()
 
 # Graph the difference in PDF compared to the true signal histogram
 db = EventDataset(
-    "data/background.csv",
+    "../data/background.csv",
     "data/signal.csv",
+    ["mass"],
     100_000,
     signal_proportion=0.1,
     normalize=True,
