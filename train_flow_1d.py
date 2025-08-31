@@ -14,12 +14,14 @@ from settings import TEST_PROPORTION, RANDOM_SEED
 
 # Set training parameters
 BATCH_SIZE = 128
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.0005
 WEIGHT_DECAY = 0.01
-EPOCHS = 10
-DATASET_SIZE = 100_000
+EPOCHS = 20
+DATASET_SIZE = 500_000
+SIGNAL_PROPORTION = 0.02
 
-SMOOTHNESS_PENALTY_FACTOR = 0.02
+SMOOTHNESS_PENALTY_FACTOR = 0.001
+SMOOTHNESS_PENALTY_N_KNOTS = 500
 
 # Prepare dataset
 data = EventDataset(
@@ -27,8 +29,10 @@ data = EventDataset(
     "data/signal.csv",
     ["mass"],
     DATASET_SIZE,
-    signal_proportion=0.1,
+    SIGNAL_PROPORTION,
+    mass_region=(500.0, None),
     normalize=True,
+    norm_type="one_dim",
 )
 train_data, test_data = random_split(
     data,
@@ -63,7 +67,7 @@ for epoch in range(EPOCHS):
         # Calculate un-smoothness penalty
         if SMOOTHNESS_PENALTY_FACTOR > 0.0:
             smoothness_penalty = calculate_non_smoothness_penalty_1d(
-                flow, 100, SMOOTHNESS_PENALTY_FACTOR
+                flow, -4.0, 4.0, SMOOTHNESS_PENALTY_N_KNOTS, SMOOTHNESS_PENALTY_FACTOR
             )
             loss += smoothness_penalty
 
@@ -89,16 +93,10 @@ plt.xlabel("Epoch")
 plt.ylabel("Loss")
 plt.show()
 
-# Save model
-model_save_name = input("Saved model file name [time/date]: ")
-if model_save_name.strip() == "":
-    model_save_name = round(time.time())
-torch.save(flow.state_dict(), f"saved_models_1d/{model_save_name}.pth")
-
 # Test the flow's generation
 with torch.no_grad():
-    bins = 50
-    limit = [0, 1]
+    bins = 100
+    limit = [-4, 4]
 
     fake_events = flow.sample(DATASET_SIZE)
 
@@ -124,9 +122,15 @@ with torch.no_grad():
     figure.legend()
     plt.show()
 
-    X = torch.linspace(0.0, 1.0, 100).reshape((-1, 1))
+    X = torch.linspace(-4.0, 4.0, 100).reshape((-1, 1))
     Y = flow.log_prob(X).exp()
     plt.plot(X.numpy().flatten(), Y.numpy().flatten())
     plt.xlabel("Normalized mass")
     plt.ylabel("Predicted density")
     plt.show()
+
+# Save model
+model_save_name = input("Saved model file name [time/date]: ")
+if model_save_name.strip() == "":
+    model_save_name = round(time.time())
+torch.save(flow.state_dict(), f"saved_models_1d/{model_save_name}.pth")

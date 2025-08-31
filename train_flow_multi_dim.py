@@ -7,19 +7,24 @@ from nflows.transforms.autoregressive import *
 import matplotlib.pyplot as plt
 
 from data import EventDataset
-from utils.loss import calculate_marginal_non_smoothness_penalty_multi_dim
+from utils.loss import (
+    calculate_marginal_non_smoothness_penalty_multi_dim,
+    calculate_impossible_mass_penalty,
+)
 from models.flows import create_spline_flow
 from settings import TEST_PROPORTION, RANDOM_SEED
 from utils.physics import calculate_dijet_mass
 
+
 # Set training parameters
 BATCH_SIZE = 128
-LEARNING_RATE = 0.0005
-WEIGHT_DECAY = 0.01
+LEARNING_RATE = 0.0001
+WEIGHT_DECAY = 0.001
 EPOCHS = 10
 DATASET_SIZE = 100_000
 
-SMOOTHNESS_PENALTY_FACTOR = 100.0
+SMOOTHNESS_PENALTY_FACTOR = 0.1
+IMPOSSIBLE_MASS_PENALTY_FACTOR = 0.0
 
 # Prepare dataset
 data = EventDataset(
@@ -28,7 +33,9 @@ data = EventDataset(
     ["energy_1", "px_1", "py_1", "pz_1", "energy_2", "px_2", "py_2", "pz_2"],
     DATASET_SIZE,
     signal_proportion=0.1,
+    mass_region=(500.0, None),
     normalize=True,
+    norm_type="multi_dim",
 )
 train_data, test_data = random_split(
     data,
@@ -63,9 +70,16 @@ for epoch in range(EPOCHS):
         # Calculate un-smoothness penalty
         if SMOOTHNESS_PENALTY_FACTOR > 0.0:
             smoothness_penalty = calculate_marginal_non_smoothness_penalty_multi_dim(
-                flow, 100, 8, SMOOTHNESS_PENALTY_FACTOR
+                flow, -1.0, 1.0, 100, 8, SMOOTHNESS_PENALTY_FACTOR
             )
             loss += smoothness_penalty
+
+        # Calculate impossible mass penalty
+        if IMPOSSIBLE_MASS_PENALTY_FACTOR > 0.0:
+            mass_penalty = calculate_impossible_mass_penalty(
+                flow, 1000, IMPOSSIBLE_MASS_PENALTY_FACTOR
+            )
+            loss += mass_penalty
 
         loss.backward()
         optimizer.step()
@@ -83,17 +97,17 @@ for epoch in range(EPOCHS):
         loss_per_epoch.append(test_loss)
         print(f"Testing loss: {test_loss}")
 
-# Plot the loss over time
-plt.plot(loss_per_epoch, color="tab:blue")
-plt.xlabel("Epoch")
-plt.ylabel("Loss")
-plt.show()
-
 # Save model
 model_save_name = input("\nSaved model file name [time/date]: ")
 if model_save_name.strip() == "":
     model_save_name = round(time.time())
 torch.save(flow.state_dict(), f"saved_models_multi_dim/{model_save_name}.pth")
+
+# Plot the loss over time
+plt.plot(loss_per_epoch, color="tab:blue")
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.show()
 
 # Test the flow's generation
 with torch.no_grad():
@@ -104,7 +118,7 @@ with torch.no_grad():
 
     figure, axis = plt.subplots(1, 2, sharex=True, sharey=True)
     axis[0].hist(
-        [data.features.flatten()],
+        [calculate_dijet_mass(data.features).flatten()],
         bins=bins,
         histtype="bar",
         color="black",

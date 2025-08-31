@@ -1,3 +1,5 @@
+from typing import Literal
+
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
@@ -15,12 +17,23 @@ class EventDataset(Dataset):
         limit: int = 10_000,
         signal_proportion: float = 0.5,
         normalize: bool = False,
+        norm_type: Literal["one_dim", "multi_dim"] = "1d",
+        mass_region: tuple[float, float | None] | None = None,
     ) -> None:
         # Import the CSV files and add a column for background/signal (denoted as 0 or 1, respectively)
         bg_dataset = pl.read_csv(bg_file_path).with_columns(pl.lit(0.0).alias("label"))
         signal_dataset = pl.read_csv(signal_file_path).with_columns(
             pl.lit(1.0).alias("label")
         )
+
+        # Remove events that are outside of the physical mass region
+        if mass_region is not None:
+            bg_dataset = bg_dataset.filter(pl.col("mass") >= mass_region[0])
+            signal_dataset = signal_dataset.filter(pl.col("mass") >= mass_region[0])
+
+            if mass_region[1] is not None:
+                bg_dataset = bg_dataset.filter(pl.col("mass") <= mass_region[1])
+                signal_dataset = signal_dataset.filter(pl.col("mass") <= mass_region[1])
 
         # Sample the dataset
         if (limit * signal_proportion) % 1 != 0:
@@ -45,24 +58,32 @@ class EventDataset(Dataset):
 
         # Convert dataset type to torch.Tensor and reshape it
         features = features.to_torch().type(torch.float32)
-        features = features.reshape((-1, len(included_features)))
+        labels = labels.to_torch().type(torch.float32)
 
+        # Potential normalization of the dataset (may remove events on the extremes)
         if normalize:
-            self.normalizing_factor = features.abs().max()
-            features = features / self.normalizing_factor
-            # features = (features - features.min()) / (features.max() - features.min())
-            # features = features[(features != 0) & (features != 1)]
-            # features = torch.log(features / (1 - features))
-            # features = features - features.mean()
-            # features = features / features.std()
+            if norm_type == "one_dim":
+                # Based on the mass normalization techniques used for CATHODE (https://arxiv.org/pdf/2109.00546)
+                features = (features - features.min()) / (
+                    features.max() - features.min()
+                )
+                labels = labels[(features != 0) & (features != 1)]
+                features = features[(features != 0) & (features != 1)]
+                features = torch.log(features / (1 - features))
+                features = features - features.mean()
+                features = features / features.std()
+            if norm_type == "multi_dim":
+                self.normalizing_factor = features.abs().max()
+                features = features / self.normalizing_factor
 
+        features = features.reshape((-1, len(included_features)))
         features.requires_grad_()
         self.features = features
 
         self.mass = (
             dataset.select(["mass"]).to_torch().type(torch.float32).reshape((-1, 1))
         )
-        self.labels = labels.to_torch().type(torch.float32)
+        self.labels = labels
         self.dataframe = dataset
 
     def __len__(self) -> int:
@@ -134,11 +155,17 @@ if __name__ == "__main__":
         "background.csv",
         "signal.csv",
         ["mass"],
-        100_000,
-        signal_proportion=0.001,
+        500_000,
+        mass_region=(500.0, None),
+        signal_proportion=0.02,
         normalize=True,
+        norm_type="one_dim",
     )
-    plt.hist(data.features.detach().numpy(), bins=50)
+    signal = (
+        data.features.detach().numpy()[data.labels.flatten().detach() == 1.0].flatten()
+    )
+    bg = data.features.detach().numpy()[data.labels.flatten().detach() == 0.0].flatten()
+    plt.hist([bg, signal], bins=300, histtype="barstacked")
     plt.xlabel("Mass")
     plt.ylabel("Entries")
     plt.show()
