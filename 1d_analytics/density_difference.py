@@ -25,15 +25,11 @@ axis_limit = (-4, 2)
 X = torch.linspace(axis_limit[0], axis_limit[1], 100).reshape((-1, 1))
 
 unconstrained_flow = create_spline_flow(10, 1, 32, 64, 4.0)
-unconstrained_flow.load_state_dict(
-    torch.load("../saved_models_1d/unconstrained_large_1.pth")
-)
+unconstrained_flow.load_state_dict(torch.load("../saved_models_1d/unconstrained_0.pth"))
 unconstrained_Y = unconstrained_flow.log_prob(X).exp().detach().numpy().flatten()
 
 constrained_flow = create_spline_flow(10, 1, 32, 64, 4.0)
-constrained_flow.load_state_dict(
-    torch.load("../saved_models_1d/constrainted_2000_knots_s00005.pth")
-)
+constrained_flow.load_state_dict(torch.load("../saved_models_1d/constrained_s01.pth"))
 constrained_Y = constrained_flow.log_prob(X).exp().detach().numpy().flatten()
 
 density_difference = constrained_Y - unconstrained_Y

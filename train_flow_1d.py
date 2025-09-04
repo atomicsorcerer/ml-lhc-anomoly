@@ -14,13 +14,13 @@ from settings import TEST_PROPORTION, RANDOM_SEED
 
 # Set training parameters
 BATCH_SIZE = 128
-LEARNING_RATE = 0.0005
+LEARNING_RATE = 0.0001
 WEIGHT_DECAY = 0.01
-EPOCHS = 20
+EPOCHS = 10
 DATASET_SIZE = 500_000
-SIGNAL_PROPORTION = 0.02
+SIGNAL_PROPORTION = 0.10
 
-SMOOTHNESS_PENALTY_FACTOR = 0.001
+SMOOTHNESS_PENALTY_FACTOR = 1.0
 SMOOTHNESS_PENALTY_N_KNOTS = 500
 
 # Prepare dataset
@@ -61,14 +61,22 @@ for epoch in range(EPOCHS):
     ):  # sb_truth = actual s/b label (1/0 respectively)
         optimizer.zero_grad()
 
-        # Calculate log_likelihood for distribution
-        loss = -flow.log_prob(X).mean()
+        # Calculate the log probability and the log absolute determinant
+        z, logabsdet = flow._transform.forward(X)
+        log_prob_z = flow._distribution.log_prob(z)
+        log_prob = log_prob_z + logabsdet
+
+        # Calculate negative log likelihood for distribution
+        loss = -log_prob.mean()
 
         # Calculate un-smoothness penalty
         if SMOOTHNESS_PENALTY_FACTOR > 0.0:
-            smoothness_penalty = calculate_non_smoothness_penalty_1d(
-                flow, -4.0, 4.0, SMOOTHNESS_PENALTY_N_KNOTS, SMOOTHNESS_PENALTY_FACTOR
-            )
+            grad_log_prob = torch.autograd.grad(
+                outputs=log_prob.sum(), inputs=X, create_graph=True
+            )[0]
+            smoothness_penalty = torch.abs(grad_log_prob)
+            smoothness_penalty = torch.mean(smoothness_penalty)
+            smoothness_penalty = smoothness_penalty * SMOOTHNESS_PENALTY_FACTOR
             loss += smoothness_penalty
 
         loss.backward()

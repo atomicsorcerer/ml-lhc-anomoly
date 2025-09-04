@@ -11,22 +11,18 @@ db = EventDataset(
     "../data/background.csv",
     "../data/signal.csv",
     ["mass"],
-    500_000,
-    0.02,
+    10_000,
+    0.10,
     mass_region=(500.0, None),
     normalize=True,
     norm_type="one_dim",
 )
 unconstrained_flow = create_spline_flow(10, 1, 32, 64, 4.0)
-unconstrained_flow.load_state_dict(
-    torch.load("../saved_models_1d/unconstrained_large_1.pth")
-)
+unconstrained_flow.load_state_dict(torch.load("../saved_models_1d/unconstrained_0.pth"))
 s_and_bg_densities = unconstrained_flow.log_prob(db.features.detach()).exp()
 
 constrained_flow = create_spline_flow(10, 1, 32, 64, 4.0)
-constrained_flow.load_state_dict(
-    torch.load("../saved_models_1d/constrained_500_knots_s0001.pth")
-)
+constrained_flow.load_state_dict(torch.load("../saved_models_1d/constrained_s01.pth"))
 bg_densities = constrained_flow.log_prob(db.features.detach()).exp()
 
 likelihood_ratios = s_and_bg_densities / bg_densities
