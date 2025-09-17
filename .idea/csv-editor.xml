@@ -10,6 +10,27 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="/pre_process_results/unconstrained_1d_50e.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/pre_process_results/unconstrained_50_epoch.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/pre_process_results/unconstrained_full.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
       </map>
     </option>
   </component>

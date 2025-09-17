@@ -21,7 +21,7 @@ db = EventDataset(
 )
 unconstrained_flow = create_spline_flow(10, 8, 32, 64, 4.0)
 unconstrained_flow.load_state_dict(
-    torch.load("../saved_models_multi_dim/unconstrained_mass_cut_0.pth")
+    torch.load("../saved_models_multi_dim/unconstrained_0.pth")
 )
 s_and_bg_densities = (
     unconstrained_flow.log_prob(db.features.detach()).exp().detach().numpy()
@@ -29,7 +29,7 @@ s_and_bg_densities = (
 
 constrained_flow = create_spline_flow(10, 8, 32, 64, 4.0)
 constrained_flow.load_state_dict(
-    torch.load("../saved_models_multi_dim/constrained_mass_cut_1_s01.pth")
+    torch.load("../saved_models_multi_dim/constrained_s00001.pth")
 )
 bg_densities = constrained_flow.log_prob(db.features.detach()).exp().detach().numpy()
 
@@ -39,20 +39,20 @@ norm_likelihood_ratios = likelihood_ratios / likelihood_ratios.max()
 signal_likelihood_ratios = likelihood_ratios[db.labels.flatten() == 1.0]
 bg_likelihood_ratios = likelihood_ratios[db.labels.flatten() == 0.0]
 
-mass_axis = calculate_dijet_mass(db.features).detach().numpy()
-plt.scatter(mass_axis, norm_likelihood_ratios, label="Likelihood ratios")
-# plt.scatter(mass_axis, s_and_bg_densities, label="S+B density")
-# plt.scatter(mass_axis, bg_densities, label="B density")
-# plt.scatter(mass_axis, s_and_bg_densities - bg_densities, label="Density difference")
-plt.ylim(0.0, 0.4)
-plt.xlabel("Re-scaled mass")
-plt.ylabel("Re-scaled likelihood ratio")
-# plt.legend()
-plt.show()
-exit()
+# mass_axis = calculate_dijet_mass(db.features).detach().numpy()
+# plt.scatter(mass_axis, norm_likelihood_ratios, label="Likelihood ratios")
+# # plt.scatter(mass_axis, s_and_bg_densities, label="S+B density")
+# # plt.scatter(mass_axis, bg_densities, label="B density")
+# # plt.scatter(mass_axis, s_and_bg_densities - bg_densities, label="Density difference")
+# plt.ylim(0.0, 0.4)
+# plt.xlabel("Re-scaled mass")
+# plt.ylabel("Re-scaled likelihood ratio")
+# # plt.legend()
+# plt.show()
+# exit()
 
 # Plot masses, labeled by prediction
-threshold = 0.000001
+threshold = 5e-6
 limit = (0.0, 0.5)
 bins = 50  # With more bins it looks a bit less promising...
 

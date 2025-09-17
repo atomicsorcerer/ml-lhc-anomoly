@@ -3,25 +3,35 @@ import time
 from torch.utils.data import DataLoader, random_split
 
 from nflows.transforms.autoregressive import *
-
 import matplotlib.pyplot as plt
+import polars as pl
 
 from data import EventDataset
-from utils.loss import calculate_non_smoothness_penalty_1d
+from utils.loss import (
+    calculate_first_order_non_smoothness_penalty,
+    calculate_outlier_gradient_penalty,
+    calculate_outlier_gradient_penalty_with_preprocess,
+    calculate_second_order_non_smoothness_penalty,
+)
 from models.flows import create_spline_flow
 from settings import TEST_PROPORTION, RANDOM_SEED
 
 
 # Set training parameters
 BATCH_SIZE = 128
-LEARNING_RATE = 0.0001
-WEIGHT_DECAY = 0.01
-EPOCHS = 10
+LEARNING_RATE = 0.00001
+WEIGHT_DECAY = 0.1
+EPOCHS = 5
 DATASET_SIZE = 500_000
 SIGNAL_PROPORTION = 0.10
 
 SMOOTHNESS_PENALTY_FACTOR = 1.0
 SMOOTHNESS_PENALTY_N_KNOTS = 500
+
+# Information from pre-processing
+settings = pl.read_csv("pre_process_results/unconstrained_full.csv")
+GRAD_STD_DEV = settings.get_column("second_order_std_dev").item()
+GRAD_MEAN = settings.get_column("second_order_mean").item()
 
 # Prepare dataset
 data = EventDataset(
@@ -71,13 +81,14 @@ for epoch in range(EPOCHS):
 
         # Calculate un-smoothness penalty
         if SMOOTHNESS_PENALTY_FACTOR > 0.0:
-            grad_log_prob = torch.autograd.grad(
-                outputs=log_prob.sum(), inputs=X, create_graph=True
-            )[0]
-            smoothness_penalty = torch.abs(grad_log_prob)
-            smoothness_penalty = torch.mean(smoothness_penalty)
-            smoothness_penalty = smoothness_penalty * SMOOTHNESS_PENALTY_FACTOR
-            loss += smoothness_penalty
+            loss += calculate_outlier_gradient_penalty_with_preprocess(
+                log_prob,
+                X,
+                GRAD_STD_DEV,
+                GRAD_MEAN,
+                loss_cut_off=-0.5,
+                alpha=SMOOTHNESS_PENALTY_FACTOR,
+            )
 
         loss.backward()
         optimizer.step()
@@ -130,9 +141,10 @@ with torch.no_grad():
     figure.legend()
     plt.show()
 
-    X = torch.linspace(-4.0, 4.0, 100).reshape((-1, 1))
+    # X = torch.linspace(-4.0, 4.0, 100).reshape((-1, 1))
+    X = data.features
     Y = flow.log_prob(X).exp()
-    plt.plot(X.numpy().flatten(), Y.numpy().flatten())
+    plt.scatter(X.numpy().flatten(), Y.numpy().flatten(), s=0.1)
     plt.xlabel("Normalized mass")
     plt.ylabel("Predicted density")
     plt.show()

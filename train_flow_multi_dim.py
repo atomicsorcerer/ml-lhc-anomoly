@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 
 from data import EventDataset
 from utils.loss import (
-    calculate_marginal_non_smoothness_penalty_multi_dim,
     calculate_impossible_mass_penalty,
+    calculate_first_order_non_smoothness_penalty,
 )
 from models.flows import create_spline_flow
 from settings import TEST_PROPORTION, RANDOM_SEED
@@ -21,9 +21,9 @@ BATCH_SIZE = 128
 LEARNING_RATE = 0.0001
 WEIGHT_DECAY = 0.001
 EPOCHS = 10
-DATASET_SIZE = 100_000
+DATASET_SIZE = 500_000
 
-SMOOTHNESS_PENALTY_FACTOR = 0.1
+SMOOTHNESS_PENALTY_FACTOR = 0.0001
 IMPOSSIBLE_MASS_PENALTY_FACTOR = 0.0
 
 # Prepare dataset
@@ -64,15 +64,19 @@ for epoch in range(EPOCHS):
     ):  # sb_truth = actual s/b label (1/0 respectively)
         optimizer.zero_grad()
 
-        # Calculate log_likelihood for distribution
-        loss = -flow.log_prob(X).mean()
+        # Calculate the log probability and the log absolute determinant
+        z, logabsdet = flow._transform.forward(X)
+        log_prob_z = flow._distribution.log_prob(z)
+        log_prob = log_prob_z + logabsdet
+
+        # Calculate negative log likelihood for distribution
+        loss = -log_prob.mean()
 
         # Calculate un-smoothness penalty
         if SMOOTHNESS_PENALTY_FACTOR > 0.0:
-            smoothness_penalty = calculate_marginal_non_smoothness_penalty_multi_dim(
-                flow, -1.0, 1.0, 100, 8, SMOOTHNESS_PENALTY_FACTOR
+            loss += calculate_first_order_non_smoothness_penalty(
+                log_prob, X, SMOOTHNESS_PENALTY_FACTOR
             )
-            loss += smoothness_penalty
 
         # Calculate impossible mass penalty
         if IMPOSSIBLE_MASS_PENALTY_FACTOR > 0.0:

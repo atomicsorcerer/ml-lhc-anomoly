@@ -18,11 +18,15 @@ db = EventDataset(
     norm_type="one_dim",
 )
 unconstrained_flow = create_spline_flow(10, 1, 32, 64, 4.0)
-unconstrained_flow.load_state_dict(torch.load("../saved_models_1d/unconstrained_0.pth"))
+unconstrained_flow.load_state_dict(
+    torch.load("../saved_models_1d/unconstrained_2_50_epochs.pth")
+)
 s_and_bg_densities = unconstrained_flow.log_prob(db.features.detach()).exp()
 
 constrained_flow = create_spline_flow(10, 1, 32, 64, 4.0)
-constrained_flow.load_state_dict(torch.load("../saved_models_1d/constrained_s01.pth"))
+constrained_flow.load_state_dict(
+    torch.load("../saved_models_1d/constrained_c2_s10.pth")
+)
 bg_densities = constrained_flow.log_prob(db.features.detach()).exp()
 
 likelihood_ratios = s_and_bg_densities / bg_densities
