@@ -5,11 +5,13 @@ from torch.utils.data import DataLoader, random_split
 from nflows.transforms.autoregressive import *
 
 import matplotlib.pyplot as plt
+import polars as pl
 
 from data import EventDataset
 from utils.loss import (
     calculate_impossible_mass_penalty,
     calculate_first_order_non_smoothness_penalty,
+    calculate_outlier_gradient_penalty_with_preprocess_mod_z_scores,
 )
 from models.flows import create_spline_flow
 from settings import TEST_PROPORTION, RANDOM_SEED
@@ -19,12 +21,17 @@ from utils.physics import calculate_dijet_mass
 # Set training parameters
 BATCH_SIZE = 128
 LEARNING_RATE = 0.0001
-WEIGHT_DECAY = 0.001
-EPOCHS = 10
+WEIGHT_DECAY = 0.01
+EPOCHS = 5
 DATASET_SIZE = 500_000
 
-SMOOTHNESS_PENALTY_FACTOR = 0.0001
+SMOOTHNESS_PENALTY_FACTOR = 15.0
 IMPOSSIBLE_MASS_PENALTY_FACTOR = 0.0
+
+# Load settings from pre-processing
+settings = pl.read_csv("pre_process_results/multi_dim_full_0.csv")
+GRAD_MEDIAN = settings.get_column("first_order_median").item()
+GRAD_MAD = settings.get_column("first_order_mad").item()
 
 # Prepare dataset
 data = EventDataset(
@@ -74,9 +81,10 @@ for epoch in range(EPOCHS):
 
         # Calculate un-smoothness penalty
         if SMOOTHNESS_PENALTY_FACTOR > 0.0:
-            loss += calculate_first_order_non_smoothness_penalty(
-                log_prob, X, SMOOTHNESS_PENALTY_FACTOR
+            penalty = calculate_outlier_gradient_penalty_with_preprocess_mod_z_scores(
+                log_prob, X, GRAD_MEDIAN, GRAD_MAD, 1.0, SMOOTHNESS_PENALTY_FACTOR, -1.0
             )
+            loss += penalty
 
         # Calculate impossible mass penalty
         if IMPOSSIBLE_MASS_PENALTY_FACTOR > 0.0:

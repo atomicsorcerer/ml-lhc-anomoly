@@ -25,7 +25,7 @@ s_and_bg_densities = unconstrained_flow.log_prob(db.features.detach()).exp()
 
 constrained_flow = create_spline_flow(10, 1, 32, 64, 4.0)
 constrained_flow.load_state_dict(
-    torch.load("../saved_models_1d/constrained_c2_s10.pth")
+    torch.load("../saved_models_1d/constrained_o1_c-2_s05.pth")
 )
 bg_densities = constrained_flow.log_prob(db.features.detach()).exp()
 
@@ -38,7 +38,7 @@ auc = metrics.roc_auc_score(db.labels.detach().numpy(), likelihood_ratios)
 
 print(auc)
 
-plt.plot(fpr, tpr, label="Our model (1d)")
+plt.plot(fpr, tpr, label="Our model (1d, new regularization)")
 plt.plot(
     np.linspace(0.0, 1.0, 100), np.linspace(0.0, 1.0, 100), label="Random classifier"
 )

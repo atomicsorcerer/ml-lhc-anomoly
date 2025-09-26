@@ -31,7 +31,9 @@ unconstrained_flow.load_state_dict(
 unconstrained_Y = unconstrained_flow.log_prob(X).exp().detach().numpy().flatten()
 
 constrained_flow = create_spline_flow(10, 1, 32, 64, 4.0)
-constrained_flow.load_state_dict(torch.load("../saved_models_1d/constrained_c1_s1.pth"))
+constrained_flow.load_state_dict(
+    torch.load("../saved_models_1d/constrained_o2_c0_s01.pth")
+)
 constrained_Y = constrained_flow.log_prob(X).exp().detach().numpy().flatten()
 
 density_difference = constrained_Y - unconstrained_Y

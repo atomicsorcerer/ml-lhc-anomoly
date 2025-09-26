@@ -29,7 +29,7 @@ s_and_bg_densities = (
 
 constrained_flow = create_spline_flow(10, 8, 32, 64, 4.0)
 constrained_flow.load_state_dict(
-    torch.load("../saved_models_multi_dim/constrained_s00001.pth")
+    torch.load("../saved_models_multi_dim/constrained_flipped_s10_c1_1.pth")
 )
 bg_densities = constrained_flow.log_prob(db.features.detach()).exp().detach().numpy()
 
@@ -52,7 +52,7 @@ bg_likelihood_ratios = likelihood_ratios[db.labels.flatten() == 0.0]
 # exit()
 
 # Plot masses, labeled by prediction
-threshold = 5e-6
+threshold = 0.0000005
 limit = (0.0, 0.5)
 bins = 50  # With more bins it looks a bit less promising...
 

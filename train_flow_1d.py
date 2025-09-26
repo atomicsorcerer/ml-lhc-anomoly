@@ -12,6 +12,7 @@ from utils.loss import (
     calculate_outlier_gradient_penalty,
     calculate_outlier_gradient_penalty_with_preprocess,
     calculate_second_order_non_smoothness_penalty,
+    calculate_outlier_gradient_penalty_with_preprocess_mod_z_scores,
 )
 from models.flows import create_spline_flow
 from settings import TEST_PROPORTION, RANDOM_SEED
@@ -26,12 +27,11 @@ DATASET_SIZE = 500_000
 SIGNAL_PROPORTION = 0.10
 
 SMOOTHNESS_PENALTY_FACTOR = 1.0
-SMOOTHNESS_PENALTY_N_KNOTS = 500
 
 # Information from pre-processing
-settings = pl.read_csv("pre_process_results/unconstrained_full.csv")
-GRAD_STD_DEV = settings.get_column("second_order_std_dev").item()
-GRAD_MEAN = settings.get_column("second_order_mean").item()
+settings = pl.read_csv("pre_process_results/1d_unconstrained_full.csv")
+GRAD_MEDIAN = settings.get_column("first_order_median").item()
+GRAD_MAD = settings.get_column("first_order_mad").item()
 
 # Prepare dataset
 data = EventDataset(
@@ -81,12 +81,12 @@ for epoch in range(EPOCHS):
 
         # Calculate un-smoothness penalty
         if SMOOTHNESS_PENALTY_FACTOR > 0.0:
-            loss += calculate_outlier_gradient_penalty_with_preprocess(
+            loss += calculate_outlier_gradient_penalty_with_preprocess_mod_z_scores(
                 log_prob,
                 X,
-                GRAD_STD_DEV,
-                GRAD_MEAN,
-                loss_cut_off=-0.5,
+                GRAD_MEDIAN,
+                GRAD_MAD,
+                loss_cut_off=0.0,
                 alpha=SMOOTHNESS_PENALTY_FACTOR,
             )
 
@@ -141,10 +141,9 @@ with torch.no_grad():
     figure.legend()
     plt.show()
 
-    # X = torch.linspace(-4.0, 4.0, 100).reshape((-1, 1))
-    X = data.features
+    X = torch.linspace(-4.0, 4.0, 100).reshape((-1, 1))
     Y = flow.log_prob(X).exp()
-    plt.scatter(X.numpy().flatten(), Y.numpy().flatten(), s=0.1)
+    plt.plot(X.numpy().flatten(), Y.numpy().flatten())
     plt.xlabel("Normalized mass")
     plt.ylabel("Predicted density")
     plt.show()

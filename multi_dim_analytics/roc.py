@@ -26,7 +26,7 @@ s_and_bg_densities = unconstrained_flow.log_prob(db.features.detach()).exp()
 
 constrained_flow = create_spline_flow(10, 8, 32, 64, 4.0)
 constrained_flow.load_state_dict(
-    torch.load("../saved_models_multi_dim/constrained_s00001.pth")
+    torch.load("../saved_models_multi_dim/constrained_flipped_s10_c1_1.pth")
 )
 bg_densities = constrained_flow.log_prob(db.features.detach()).exp()
 

@@ -13,19 +13,19 @@ z_bins = 50
 data = EventDataset(
     "data/background.csv",
     "data/signal.csv",
-    ["mass"],
+    ["energy_1", "px_1", "py_1", "pz_1", "energy_2", "px_2", "py_2", "pz_2"],
     10_000,
     0.1,
     mass_region=(500.0, None),
     normalize=True,
-    norm_type="one_dim",
+    norm_type="multi_dim",
 )
 X = data.features
-Y = data.labels
+Y = data.labels.flatten()
 
-unconstrained_flow = create_spline_flow(10, 1, 32, 64, 4.0)
+unconstrained_flow = create_spline_flow(10, 8, 32, 64, 4.0)
 unconstrained_flow.load_state_dict(
-    torch.load("saved_models_1d/unconstrained_2_50_epochs.pth")
+    torch.load("saved_models_multi_dim/constrained_s00001.pth")
 )
 unconstrained_Y = unconstrained_flow.log_prob(X)
 
@@ -63,11 +63,9 @@ modified_z_score_second_order = (
 )
 
 # Modified z-score histogram
-plt.hist(
-    [
-        modified_z_score_first_order[Y == 0.0].detach().numpy(),
-        modified_z_score_first_order[Y == 1.0].detach().numpy(),
-    ],
+plt.hist2d(
+    modified_z_score_first_order[Y == 0.0].detach().numpy(),
+    modified_z_score_first_order[Y == 1.0].detach().numpy(),
     bins=z_bins,
     color=["tab:blue", "tab:red"],
     label=["Background", "Signal"],
@@ -77,7 +75,7 @@ plt.hist(
 plt.xlabel("Normalized magnitude (modified z-scores)")
 plt.ylabel("Entries")
 plt.legend()
-plt.title("1D Unconstrained model, first-order-gradient magnitudes")
+plt.title("Constrained model, first-order-gradient magnitudes, previous method")
 plt.show()
 
 settings = {
@@ -94,4 +92,4 @@ print(settings)
 settings = pl.DataFrame(settings)
 save_name = input("Save settings as: ")
 if save_name.strip() != "":
-    settings.write_csv(f"pre_process_results/1d_{save_name}.csv")
+    settings.write_csv(f"pre_process_results/multi_dim_{save_name}.csv")

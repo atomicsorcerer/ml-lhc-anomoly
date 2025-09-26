@@ -157,7 +157,7 @@ if __name__ == "__main__":
         ["mass"],
         500_000,
         mass_region=(500.0, None),
-        signal_proportion=0.02,
+        signal_proportion=0.1,
         normalize=True,
         norm_type="one_dim",
     )
@@ -165,7 +165,11 @@ if __name__ == "__main__":
         data.features.detach().numpy()[data.labels.flatten().detach() == 1.0].flatten()
     )
     bg = data.features.detach().numpy()[data.labels.flatten().detach() == 0.0].flatten()
-    plt.hist([bg, signal], bins=300, histtype="barstacked")
-    plt.xlabel("Mass")
+    plt.hist(
+        [bg, signal], bins=300, histtype="barstacked", label=["Background", "Signal"]
+    )
+    plt.xlabel("Normalized Mass")
     plt.ylabel("Entries")
+    plt.legend()
+    plt.title("Signal proportion = 10%")
     plt.show()

@@ -5,6 +5,32 @@ from nflows.flows import Flow
 from utils.physics import calculate_squared_dijet_mass
 
 
+def calculate_outlier_gradient_penalty_with_preprocess_mod_z_scores(
+    log_prob: torch.Tensor,
+    inputs: torch.Tensor,
+    median: float,
+    mad: float,
+    loss_cut_off: float = 2.0,
+    alpha: float = 1.0,
+    z_score_factor: float = 1.0,
+):
+    grad_log_prob_first_order = torch.autograd.grad(
+        outputs=log_prob.sum(), inputs=inputs, create_graph=True
+    )[0]
+    # grad_log_prob_second_order = torch.autograd.grad(
+    #     outputs=grad_log_prob_first_order.sum(), inputs=inputs, create_graph=True
+    # )[0]
+    gradients = torch.norm(grad_log_prob_first_order, dim=1)
+    modified_z_scores = 0.6745 * (gradients - median) / mad
+    penalty = torch.nn.functional.relu(
+        modified_z_scores * z_score_factor - loss_cut_off
+    )
+    penalty = torch.mean(penalty)
+    penalty = penalty * alpha
+
+    return penalty
+
+
 def calculate_outlier_gradient_penalty_with_preprocess(
     log_prob: torch.Tensor,
     inputs: torch.Tensor,
