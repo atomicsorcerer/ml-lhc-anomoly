@@ -10,13 +10,6 @@
             </Attribute>
           </value>
         </entry>
-        <entry key="/pre_process_results/unconstrained_full.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
       </map>
     </option>
   </component>
