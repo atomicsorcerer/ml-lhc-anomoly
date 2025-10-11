@@ -21,6 +21,7 @@ ml purge
 ml miniconda/3
 
 # Activate conda env
+conda init
 conda activate piad
 
 # Run python code
