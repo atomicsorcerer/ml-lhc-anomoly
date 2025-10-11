@@ -30,4 +30,4 @@ mkdir -p saved_models_cluster
 mkdir -p cluster_output
 
 # Run python code
-python3.12 multi_dim_training.py 128 0.0001 0.01 10 500000 0.1 0.0
+python3.12 cluster_multi_dim_training.py 128 0.0001 0.01 10 500000 0.1 0.0
