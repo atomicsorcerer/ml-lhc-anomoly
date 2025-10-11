@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 from torch.utils.data import Dataset
-import polars as pl
+import pandas as pd
 from settings import RANDOM_SEED
 
 
@@ -21,44 +21,44 @@ class EventDataset(Dataset):
         mass_region: tuple[float, float | None] | None = None,
     ) -> None:
         # Import the CSV files and add a column for background/signal (denoted as 0 or 1, respectively)
-        bg_dataset = pl.read_csv(bg_file_path).with_columns(pl.lit(0.0).alias("label"))
-        signal_dataset = pl.read_csv(signal_file_path).with_columns(
-            pl.lit(1.0).alias("label")
-        )
+        bg_dataset = pd.read_csv(bg_file_path).assign(label=0.0)
+        signal_dataset = pd.read_csv(signal_file_path).assign(label=1.0)
 
         # Remove events that are outside of the physical mass region
         if mass_region is not None:
-            bg_dataset = bg_dataset.filter(pl.col("mass") >= mass_region[0])
-            signal_dataset = signal_dataset.filter(pl.col("mass") >= mass_region[0])
+            bg_dataset = bg_dataset.loc[bg_dataset["mass"] >= mass_region[0]]
+            signal_dataset = signal_dataset.loc[
+                signal_dataset["mass"] >= mass_region[0]
+            ]
 
             if mass_region[1] is not None:
-                bg_dataset = bg_dataset.filter(pl.col("mass") <= mass_region[1])
-                signal_dataset = signal_dataset.filter(pl.col("mass") <= mass_region[1])
+                bg_dataset = bg_dataset.loc[bg_dataset["mass"] <= mass_region[1]]
+                signal_dataset = signal_dataset.loc[
+                    signal_dataset["mass"] <= mass_region[1]
+                ]
 
         # Sample the dataset
         if (limit * signal_proportion) % 1 != 0:
             raise ValueError("Limit times the signal proportion must be an integer.")
 
         signal_dataset = signal_dataset.sample(
-            n=int(limit * signal_proportion),
-            shuffle=True,
-            seed=RANDOM_SEED,
+            frac=signal_proportion,
+            random_state=RANDOM_SEED,
         )
         bg_dataset = bg_dataset.sample(
-            n=int(limit * (1 - signal_proportion)),
-            shuffle=True,
-            seed=RANDOM_SEED,
+            frac=(1.0 - signal_proportion),
+            random_state=RANDOM_SEED,
         )
 
-        dataset = pl.concat((bg_dataset, signal_dataset))
+        dataset = pd.concat((bg_dataset, signal_dataset))
 
         # Select the necessary columns for training, split dataset into features and labels
-        features = dataset.select(included_features)
-        labels = dataset.select(["label"])
+        features = dataset[included_features]
+        labels = dataset["label"]
 
         # Convert dataset type to torch.Tensor and reshape it
-        features = features.to_torch().type(torch.float32)
-        labels = labels.to_torch().type(torch.float32)
+        features = torch.from_numpy(features.values).type(torch.float32)
+        labels = torch.from_numpy(labels.values).type(torch.float32).reshape((-1, 1))
 
         # Potential normalization of the dataset (may remove events on the extremes)
         if normalize:
@@ -81,7 +81,9 @@ class EventDataset(Dataset):
         self.features = features
 
         self.mass = (
-            dataset.select(["mass"]).to_torch().type(torch.float32).reshape((-1, 1))
+            torch.from_numpy(dataset["mass"].values)
+            .type(torch.float32)
+            .reshape((-1, 1))
         )
         self.labels = labels
         self.dataframe = dataset

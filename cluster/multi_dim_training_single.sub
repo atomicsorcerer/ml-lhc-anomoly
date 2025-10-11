@@ -5,12 +5,12 @@
 # other lines that start with "#" are comments
 
 #SBATCH --job-name=multi_dim_training                   ## job name
-#SBATCH -p atlas                                        ## use free partition
+#SBATCH --partition atlas                               ## use free partition
 #SBATCH --nodes=1                                       ## use 1 node, don't ask for multiple
 #SBATCH --ntasks=1                                      ## ask for 1 CPU
 #SBATCH --mem-per-cpu=1G                                ## ask for 1Gb memory per CPU
-#SBATCH --error=cluster_output/%x.%A.err              ## Slurm error  file, %x - job name, %A job id
-#SBATCH --out=cluster_output/%x.%A.out                ## Slurm output file, %x - job name, %A job id
+#SBATCH --error=cluster_output/%x.%A.err                ## Slurm error  file, %x - job name, %A job id
+#SBATCH --out=cluster_output/%x.%A.out                  ## Slurm output file, %x - job name, %A job id
 
 # Run command hostname and assign output to a variable
 hn=$(hostname)

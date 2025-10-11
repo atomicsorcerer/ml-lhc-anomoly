@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
-import polars as pl
+import pandas as pd
 
 from data import EventDataset
 from models.flows import create_spline_flow
@@ -91,7 +91,7 @@ settings = {
     "second_order_mad": second_order_mad.item(),
 }
 print(settings)
-settings = pl.DataFrame(settings)
+settings = pd.DataFrame(settings)
 save_name = input("Save settings as: ")
 if save_name.strip() != "":
     settings.write_csv(f"pre_process_results/1d_{save_name}.csv")

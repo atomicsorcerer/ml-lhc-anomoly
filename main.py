@@ -1,4 +1,4 @@
-import polars as pl
+import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -9,8 +9,8 @@ plt.rcParams.update({"lines.linewidth": 1.5})
 # plt.rcParams.update({"font.family": "serif"})
 # plt.rcParams.update({"font.serif": "Computer Modern Serif"})
 
-signal = pl.read_csv("data/signal.csv").get_column("mass").to_numpy()
-background = pl.read_csv("data/background.csv").get_column("mass").to_numpy()
+signal = pd.read_csv("data/signal.csv")["mass"].to_numpy()
+background = pd.read_csv("data/background.csv")["mass"].to_numpy()
 
 plt.hist(
     [background, signal],

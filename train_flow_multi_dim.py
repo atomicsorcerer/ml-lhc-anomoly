@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader, random_split
 from nflows.transforms.autoregressive import *
 
 import matplotlib.pyplot as plt
-import polars as pl
+import pandas as pd
 
 from data import EventDataset
 from utils.loss import (
@@ -29,9 +29,9 @@ SMOOTHNESS_PENALTY_FACTOR = 15.0
 IMPOSSIBLE_MASS_PENALTY_FACTOR = 0.0
 
 # Load settings from pre-processing
-settings = pl.read_csv("pre_process_results/multi_dim_full_0.csv")
-GRAD_MEDIAN = settings.get_column("first_order_median").item()
-GRAD_MAD = settings.get_column("first_order_mad").item()
+settings = pd.read_csv("pre_process_results/1d_unconstrained_full.csv")
+GRAD_MEDIAN = settings["first_order_median"].item()
+GRAD_MAD = settings["first_order_mad"].item()
 
 # Prepare dataset
 data = EventDataset(

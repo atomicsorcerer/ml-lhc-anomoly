@@ -4,17 +4,10 @@ import sys
 from torch.utils.data import DataLoader, random_split
 
 from nflows.transforms.autoregressive import *
-import matplotlib.pyplot as plt
-import polars as pl
+import pandas as pd
 
 from data.event_dataset import EventDataset
-from utils.loss import (
-    calculate_first_order_non_smoothness_penalty,
-    calculate_outlier_gradient_penalty,
-    calculate_outlier_gradient_penalty_with_preprocess,
-    calculate_second_order_non_smoothness_penalty,
-    calculate_outlier_gradient_penalty_with_preprocess_mod_z_scores,
-)
+from utils.loss import calculate_outlier_gradient_penalty_with_preprocess_mod_z_scores
 from models.flows import create_spline_flow
 from settings import TEST_PROPORTION, RANDOM_SEED
 
@@ -30,9 +23,9 @@ SIGNAL_PROPORTION = float(sys.argv[6])
 SMOOTHNESS_PENALTY_FACTOR = float(sys.argv[7])
 
 # Information from pre-processing
-settings = pl.read_csv("pre_process_results/1d_unconstrained_full.csv")
-GRAD_MEDIAN = settings.get_column("first_order_median").item()
-GRAD_MAD = settings.get_column("first_order_mad").item()
+settings = pd.read_csv("pre_process_results/1d_unconstrained_full.csv")
+GRAD_MEDIAN = settings["first_order_median"].item()
+GRAD_MAD = settings["first_order_mad"].item()
 
 # Prepare dataset
 data = EventDataset(
@@ -106,12 +99,6 @@ for epoch in range(EPOCHS):
 
         loss_per_epoch.append(test_loss)
         print(f"Testing loss: {test_loss}")
-
-# Plot the loss over time
-plt.plot(loss_per_epoch, color="tab:blue")
-plt.xlabel("Epoch")
-plt.ylabel("Loss")
-plt.show()
 
 # Save model
 model_save_name = input("Saved model file name [time/date]: ")
