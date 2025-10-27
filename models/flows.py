@@ -26,4 +26,9 @@ def create_spline_flow(
     base_dist = StandardNormal(shape=[features])
     flow = Flow(composite_transform, base_dist)
 
+    if torch.cuda.is_available():
+        print(f"GPU: {torch.cuda.get_device_name(0)} is available.")
+        device = torch.device("cuda")
+        flow = flow.to(device)
+
     return flow

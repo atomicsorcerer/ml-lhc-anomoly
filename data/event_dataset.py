@@ -31,11 +31,11 @@ class EventDataset(Dataset):
                 signal_dataset["mass"] >= mass_region[0]
             ]
 
-            if mass_region[1] is not None:
-                bg_dataset = bg_dataset.loc[bg_dataset["mass"] <= mass_region[1]]
-                signal_dataset = signal_dataset.loc[
-                    signal_dataset["mass"] <= mass_region[1]
-                ]
+        if mass_region[1] is not None:
+            bg_dataset = bg_dataset.loc[bg_dataset["mass"] <= mass_region[1]]
+            signal_dataset = signal_dataset.loc[
+                signal_dataset["mass"] <= mass_region[1]
+            ]
 
         # Sample the dataset
         if (limit * signal_proportion) % 1 != 0:
@@ -78,15 +78,23 @@ class EventDataset(Dataset):
 
         features = features.reshape((-1, len(included_features)))
         features.requires_grad_()
-        self.features = features
 
         self.mass = (
             torch.from_numpy(dataset["mass"].values)
             .type(torch.float32)
             .reshape((-1, 1))
         )
-        self.labels = labels
         self.dataframe = dataset
+
+        # Move data to GPU, if applicable
+        if torch.cuda.is_available():
+            print(f"GPU: {torch.cuda.get_device_name(0)} is available.")
+            device = torch.device("cuda")
+            self.features = features.to(device)
+            self.labels = labels.to(device)
+        else:
+            self.features = features
+            self.labels = labels
 
     def __len__(self) -> int:
         return len(self.labels)
