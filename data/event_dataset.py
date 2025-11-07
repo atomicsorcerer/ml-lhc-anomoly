@@ -42,11 +42,11 @@ class EventDataset(Dataset):
             raise ValueError("Limit times the signal proportion must be an integer.")
 
         signal_dataset = signal_dataset.sample(
-            frac=signal_proportion,
+            n=int(signal_proportion * limit),
             random_state=RANDOM_SEED,
         )
         bg_dataset = bg_dataset.sample(
-            frac=(1.0 - signal_proportion),
+            n=int((1.0 - signal_proportion) * limit),
             random_state=RANDOM_SEED,
         )
 
@@ -88,13 +88,14 @@ class EventDataset(Dataset):
 
         # Move data to GPU, if applicable
         if torch.cuda.is_available():
-            print(f"GPU: {torch.cuda.get_device_name(0)} is available.")
             device = torch.device("cuda")
             self.features = features.to(device)
             self.labels = labels.to(device)
+            print(f"Data moved to {torch.cuda.get_device_name(0)}.")
         else:
             self.features = features
             self.labels = labels
+            print(f"Data on CPU.")
 
     def __len__(self) -> int:
         return len(self.labels)
